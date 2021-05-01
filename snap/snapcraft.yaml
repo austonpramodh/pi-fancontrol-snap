@@ -1,6 +1,6 @@
 name: pi-fancontrol
 base: core18
-version: '0.1'
+version: "0.2"
 summary: Control a raspberry pi fan attached to a GPIO
 description: |
   Control a fan attached to a GPIO via NPN transistor
@@ -21,7 +21,7 @@ description: |
   above connect command to enable access to this changed GPIO)
 
       snap set pi-fancontrol gpio=23
-  
+
   Set the temperature threshold (in degrees celsius) at which the
   fan turns on
 

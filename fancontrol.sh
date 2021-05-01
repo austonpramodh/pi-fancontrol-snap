@@ -16,23 +16,28 @@ INTERVAL="$(snapctl get interval)"
 THRESHOLD="$(snapctl get threshold)"
 GPIO="$(snapctl get gpio)"
 
-while [ ! -f /sys/class/gpio/gpio${GPIO}/value ]
-do
+# Check if the gpio pin has been initialized
+if [ ! -d "/sys/class/gpio/gpio${GPIO}" ]; then
+  echo "${GPIO}" >/sys/class/gpio/export
+fi
+
+# Wait for gpio pin to be available
+while [ ! -f /sys/class/gpio/gpio${GPIO}/value ]; do
   sleep 1
   echo "fancontrol: sleeping while waiting for file /sys/class/gpio/gpio${GPIO}/value"
 done
 
-if [ "(cat /sys/class/gpio/gpio${GPIO}/direction)" != "out" ]; then
+if [ "$(cat /sys/class/gpio/gpio${GPIO}/direction)" != "out" ]; then
   echo out >/sys/class/gpio/gpio${GPIO}/direction
 fi
 
 get_temp() {
-  THERMAL="$(($(cat /sys/devices/virtual/thermal/thermal_zone0/temp)/1000))"
+  local THERMAL="$(($(cat /sys/devices/virtual/thermal/thermal_zone0/temp) / 1000))"
   echo "$THERMAL"
 }
 
-get_status(){
-  STATUS="$(cat /sys/class/gpio/gpio${GPIO}/value)"
+get_status() {
+  local STATUS="$(cat /sys/class/gpio/gpio${GPIO}/value)"
   echo "$STATUS"
 }
 
@@ -45,17 +50,18 @@ else
 fi
 
 while true; do
-  if [ "$(get_temp)" -gt "$THRESHOLD" ]; then
-    if [ "$(get_status)" = "0" ]; then
+  current_temp="$(get_temp)"
+  current_status="$(get_status)"
+  if [ "$current_temp" -gt "$THRESHOLD" ]; then
+    if [ "$current_status" = "0" ]; then
       echo "1" >/sys/class/gpio/gpio${GPIO}/value
-      echo "$(date +%d.%m.%Y-%H:%M:%S): fan on at $(get_temp) °C"
+      echo "$(date +%d.%m.%Y-%H:%M:%S): fan on at $current_temp °C"
     fi
-  else 
-    if [ "$(get_status)" = "1" ]; then
+  else
+    if [ "$current_status" = "1" ]; then
       echo "0" >/sys/class/gpio/gpio${GPIO}/value
-      echo "$(date +%d.%m.%Y-%H:%M:%S): fan off at $(get_temp) °C"
+      echo "$(date +%d.%m.%Y-%H:%M:%S): fan off at $current_temp °C"
     fi
   fi
   sleep ${INTERVAL}
 done
-
